@@ -1,2 +1,767 @@
 # -
-يحساب 
+يحساب <!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#064e3b" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="المحاسب الذكي" />
+  <link rel="manifest" href="manifest.json" />
+  <link rel="icon" type="image/svg+xml" href="icon-192.svg" />
+  <title>المحاسب الذكي MRU - السجل اليومي والشهري</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Cairo', sans-serif; background-color: #f3f6f9; color: #1e293b; }
+    .card { background: white; border-radius: 1rem; box-shadow: 0 4px 15px rgba(0,0,0,0.04); border: 1px solid #e2e8f0; }
+    .btn-primary { background: linear-gradient(135deg, #059669, #10b981); color: white; transition: all 0.2s; }
+    .btn-primary:hover { filter: brightness(1.05); transform: translateY(-1px); }
+    .drop-zone { border: 2px dashed #94a3b8; transition: all 0.2s; }
+    .drop-zone.dragover { border-color: #10b981; background-color: #ecfdf5; }
+    .tab-active { background-color: #059669; color: white; }
+  </style>
+</head>
+<body class="p-4 md:p-6 max-w-5xl mx-auto">
+
+  <header class="card p-5 mb-6 flex flex-col md:flex-row justify-between items-center gap-4 bg-gradient-to-l from-emerald-900 to-slate-900 text-white border-none">
+    <div>
+      <h1 class="text-2xl font-extrabold flex items-center gap-2">
+        <span>📊</span> المحاسب الذكي (MRU)
+      </h1>
+      <p class="text-slate-300 text-sm mt-1">تتبع يومي وشهري طويل المدى للربح، الكاش، الديون، وتحليل المعاملات</p>
+    </div>
+    <div class="flex flex-wrap gap-2 justify-center">
+      <button id="install-app-btn" onclick="triggerInstallApp()" class="px-4 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-sm font-extrabold shadow-lg transition flex items-center gap-1.5">
+        <span>📲</span> تثبيت التطبيق الآن
+      </button>
+    </div>
+  </header>
+
+  <div id="install-modal" class="fixed inset-0 bg-black/60 hidden items-center justify-center p-4 z-50">
+    <div class="card max-w-md w-full p-6 text-right">
+      <div class="flex justify-between items-center mb-3">
+        <h3 class="text-lg font-extrabold text-slate-800">📲 خطوات تثبيت التطبيق على السامسونج</h3>
+        <button onclick="closeInstallModal()" class="text-slate-400 hover:text-slate-700 text-xl font-bold">&times;</button>
+      </div>
+      <p class="text-xs text-slate-600 mb-3 leading-relaxed">بعد رفع ملفات الحزمة على رابط (مثل GitHub Pages أو Netlify) أو فتحها عبر رابط مباشر في Chrome، سيظهر زر التثبيت تلقائياً. يمكنك أيضاً التثبيت يدوياً:</p>
+      <div class="space-y-2 text-xs bg-slate-50 p-3 rounded-xl border border-slate-200 text-slate-700">
+        <p><strong>1.</strong> افتح رابط التطبيق في متصفح <strong>Google Chrome</strong> على السامسونج.</p>
+        <p><strong>2.</strong> اضغط على النقاط الثلاث <strong>(⋮)</strong> أعلى اليمين واختر <strong>"تثبيت التطبيق" (Install app)</strong> أو <strong>"إضافة إلى الشاشة الرئيسية"</strong>.</p>
+        <p><strong>3.</strong> أو حوّل الرابط إلى ملف <strong>APK</strong> عبر موقع <strong>PWABuilder.com</strong> أو <strong>WebIntoApp.com</strong> وثبّته مباشرة.</p>
+      </div>
+      <div class="mt-4 flex justify-end">
+        <button onclick="closeInstallModal()" class="px-5 py-2.5 rounded-xl bg-emerald-600 text-white font-bold text-xs">
+          حسناً
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <nav class="flex gap-2 mb-6 bg-white p-1.5 rounded-2xl border border-slate-200 shadow-sm">
+    <button id="tab-btn-daily" onclick="switchTab('daily')" class="flex-1 py-2.5 rounded-xl text-sm font-bold tab-active transition">
+      📝 إدخال وحساب اليوم
+    </button>
+    <button id="tab-btn-history" onclick="switchTab('history')" class="flex-1 py-2.5 rounded-xl text-sm font-bold text-slate-600 hover:bg-slate-100 transition">
+      📅 السجل التاريخي والأرباح الشهرية
+    </button>
+  </nav>
+
+  <div id="view-daily">
+    <section class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+      <div class="card p-4 border-r-4 border-emerald-500">
+        <div class="text-xs text-slate-500 font-semibold">صافي ربح اليوم</div>
+        <div id="kpi-profit" class="text-2xl font-extrabold text-emerald-600 mt-1">0.00 MRU</div>
+      </div>
+      <div class="card p-4 border-r-4 border-blue-500">
+        <div class="text-xs text-slate-500 font-semibold">الموجود الكلي (كاش + رصيد)</div>
+        <div id="kpi-total-available" class="text-2xl font-extrabold text-blue-600 mt-1">0.00 MRU</div>
+      </div>
+      <div class="card p-4 border-r-4 border-amber-500">
+        <div class="text-xs text-slate-500 font-semibold">الديون لك (عند العملاء)</div>
+        <div id="kpi-debts-for" class="text-2xl font-extrabold text-amber-600 mt-1">0.00 MRU</div>
+      </div>
+      <div class="card p-4 border-r-4 border-rose-500">
+        <div class="text-xs text-slate-500 font-semibold">فرق المطابقة</div>
+        <div id="kpi-diff" class="text-2xl font-extrabold text-slate-700 mt-1">0.00 MRU</div>
+      </div>
+    </section>
+
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+      <section class="card p-5">
+        <div class="flex justify-between items-center mb-4">
+          <h2 class="text-lg font-bold text-slate-800 flex items-center gap-2">
+            <span>💰</span> أرقام اليوم والمطابقة
+          </h2>
+          <button onclick="resetDay()" class="text-xs px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold">
+            🔄 تصفير ليوم جديد
+          </button>
+        </div>
+        <div class="space-y-3">
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block text-xs font-semibold text-slate-600 mb-1">التاريخ</label>
+              <input type="date" id="tx-date" onchange="recalc()" class="w-full p-2.5 rounded-lg border border-slate-300 text-sm focus:outline-none focus:border-emerald-500" />
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-600 mb-1">عدد المعاملات المؤكدة</label>
+              <input type="number" id="tx-count" value="0" oninput="recalc()" class="w-full p-2.5 rounded-lg border border-slate-300 text-sm focus:outline-none focus:border-emerald-500" />
+            </div>
+          </div>
+
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block text-xs font-semibold text-slate-600 mb-1">رأس مال البداية (MRU)</label>
+              <input type="number" step="0.01" id="opening-capital" value="0" oninput="recalc()" class="w-full p-2.5 rounded-lg border border-slate-300 text-sm focus:outline-none focus:border-emerald-500" />
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-600 mb-1">عمولات / أرباح اليوم (MRU)</label>
+              <input type="number" step="0.01" id="daily-commissions" value="0" oninput="recalc()" class="w-full p-2.5 rounded-lg border border-slate-300 text-sm focus:outline-none focus:border-emerald-500" />
+            </div>
+          </div>
+
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block text-xs font-semibold text-slate-600 mb-1">الكاش الفعلي في يدك (MRU)</label>
+              <input type="number" step="0.01" id="actual-cash" value="0" oninput="recalc()" class="w-full p-2.5 rounded-lg border border-slate-300 text-sm focus:outline-none focus:border-emerald-500" />
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-600 mb-1">الرصيد الإلكتروني المتاح (MRU)</label>
+              <input type="number" step="0.01" id="digital-balance" value="0" oninput="recalc()" class="w-full p-2.5 rounded-lg border border-slate-300 text-sm focus:outline-none focus:border-emerald-500" />
+            </div>
+          </div>
+
+          <div class="grid grid-cols-3 gap-2">
+            <div>
+              <label class="block text-xs font-semibold text-slate-600 mb-1">ديون جديدة لك</label>
+              <input type="number" step="0.01" id="new-debts-for" value="0" oninput="recalc()" class="w-full p-2 rounded-lg border border-slate-300 text-sm focus:outline-none focus:border-emerald-500" />
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-600 mb-1">ديون محصّلة اليوم</label>
+              <input type="number" step="0.01" id="collected-debts" value="0" oninput="recalc()" class="w-full p-2 rounded-lg border border-slate-300 text-sm focus:outline-none focus:border-emerald-500" />
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-600 mb-1">ديون عليك للغير</label>
+              <input type="number" step="0.01" id="debts-on-me" value="0" oninput="recalc()" class="w-full p-2 rounded-lg border border-slate-300 text-sm focus:outline-none focus:border-emerald-500" />
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 mb-1">مصاريف اليوم الشخصية / التشغيلية (MRU)</label>
+            <input type="number" step="0.01" id="daily-expenses" value="0" oninput="recalc()" class="w-full p-2.5 rounded-lg border border-slate-300 text-sm focus:outline-none focus:border-emerald-500" />
+          </div>
+
+          <div id="reconcile-banner" class="p-3 rounded-xl bg-slate-100 text-slate-700 text-xs font-semibold">
+            الموجود المتوقع: 0.00 MRU | الموجود الفعلي: 0.00 MRU
+          </div>
+
+          <button onclick="saveToHistory()" class="w-full py-3 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-sm shadow transition flex items-center justify-center gap-2">
+            <span>📌</span> حفظ إغلاق هذا اليوم في السجل الشهري
+          </button>
+        </div>
+      </section>
+
+      <section class="card p-5 flex flex-col justify-between">
+        <div>
+          <h2 class="text-lg font-bold mb-2 text-slate-800 flex items-center gap-2">
+            <span>🤖</span> المساعد المحاسبي الذكي (تحليل الملفات)
+          </h2>
+          <p class="text-xs text-slate-500 mb-3">ارفع كشف المعاملات (PDF / CSV / TXT / صورة) أو اكتب ملخص اليوم لعدّ المعاملات وحساب العمولات تلقائياً.</p>
+
+          <div id="drop-zone" onclick="document.getElementById('file-input').click()" class="drop-zone rounded-xl p-4 text-center cursor-pointer mb-3 bg-slate-50 hover:bg-emerald-50/40">
+            <input type="file" id="file-input" class="hidden" accept=".pdf,.csv,.txt,image/*" onchange="handleFileSelect(event)" />
+            <div class="text-2xl mb-1">📂</div>
+            <div class="text-sm font-bold text-slate-700">اضغط لرفع ملف المعاملات أو اسحبه هنا</div>
+            <div class="text-xs text-slate-400 mt-1">يدعم PDF، صور الشاشة، CSV، والملفات النصية</div>
+            <div id="file-status" class="text-xs font-bold text-emerald-700 mt-2 hidden"></div>
+          </div>
+
+          <textarea id="ai-input" rows="4" placeholder="أو اكتب هنا مباشرة: مثلاً ربحت 946.71 عمولة من 49 معاملة، وصرفت 200، وسلّفت زبون 500..." class="w-full p-3 rounded-xl border border-slate-300 text-sm focus:outline-none focus:border-emerald-500 mb-3"></textarea>
+
+          <details class="mb-3 text-xs text-slate-500">
+            <summary class="cursor-pointer font-semibold text-slate-600">⚙️ إعداد مفتاح Gemini API (اختياري للتحليل السحابي)</summary>
+            <input type="password" id="gemini-key" placeholder="ألصق مفتاح Gemini API هنا لحفظه في متصفحك" onchange="localStorage.setItem('gemini_api_key', this.value)" class="w-full mt-2 p-2 rounded-lg border border-slate-300 text-xs" />
+          </details>
+        </div>
+
+        <div>
+          <button onclick="analyzeData()" id="analyze-btn" class="w-full py-3 rounded-xl btn-primary font-bold text-sm shadow">
+            ✨ تحليل وتعبئة الأرقام تلقائياً
+          </button>
+          <div id="ai-output" class="mt-3 p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-xs text-emerald-900 hidden whitespace-pre-line"></div>
+        </div>
+      </section>
+    </div>
+
+    <section class="card p-5 mb-6">
+      <h2 class="text-lg font-bold mb-3 text-slate-800 flex items-center gap-2">
+        <span>📤</span> مشاركة ملخص اليوم مع صديقك
+      </h2>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div class="space-y-3">
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 mb-1">اسم الصديق / الشريك</label>
+            <input type="text" id="friend-name" value="صديقي" oninput="updateSharePreview()" class="w-full p-2.5 rounded-lg border border-slate-300 text-sm" />
+          </div>
+          <div class="grid grid-cols-2 gap-2 text-xs font-semibold text-slate-700">
+            <label class="flex items-center gap-2 bg-slate-50 p-2 rounded-lg border">
+              <input type="checkbox" id="chk-profit" checked onchange="updateSharePreview()"> صافي الربح
+            </label>
+            <label class="flex items-center gap-2 bg-slate-50 p-2 rounded-lg border">
+              <input type="checkbox" id="chk-total" checked onchange="updateSharePreview()"> المبلغ الكامل (الموجود)
+            </label>
+            <label class="flex items-center gap-2 bg-slate-50 p-2 rounded-lg border">
+              <input type="checkbox" id="chk-debts" checked onchange="updateSharePreview()"> الديون (لك وعليك)
+            </label>
+            <label class="flex items-center gap-2 bg-slate-50 p-2 rounded-lg border">
+              <input type="checkbox" id="chk-tx" checked onchange="updateSharePreview()"> عدد المعاملات
+            </label>
+          </div>
+          <div class="flex flex-wrap gap-2 pt-1">
+            <button onclick="shareWhatsApp()" class="flex-1 py-2.5 px-4 rounded-xl bg-green-600 hover:bg-green-700 text-white font-bold text-xs transition">
+              💬 إرسال عبر واتساب
+            </button>
+            <button onclick="copyReport()" class="py-2.5 px-4 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs transition">
+              📋 نسخ
+            </button>
+            <button onclick="nativeShare()" class="py-2.5 px-4 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs transition">
+              🔗 مشاركة
+            </button>
+          </div>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1">معاينة الرسالة الجاهزة للإرسال:</label>
+          <textarea id="share-preview" rows="7" readonly class="w-full p-3 rounded-xl bg-slate-50 border border-slate-300 text-xs font-semibold text-slate-800 leading-relaxed"></textarea>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <div id="view-history" class="hidden">
+    <section class="card p-5 mb-6 flex flex-col md:flex-row justify-between items-center gap-4">
+      <div class="flex items-center gap-3 w-full md:w-auto">
+        <label class="text-sm font-bold text-slate-700 whitespace-nowrap">اختر الشهر:</label>
+        <input type="month" id="filter-month" onchange="renderHistory()" class="p-2.5 rounded-xl border border-slate-300 text-sm font-bold text-slate-800" />
+        <button onclick="document.getElementById('filter-month').value=''; renderHistory();" class="px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-xs font-bold text-slate-700">
+          كل الأشهر
+        </button>
+      </div>
+      <div class="flex gap-2 w-full md:w-auto justify-end">
+        <button onclick="exportCSV()" class="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold">
+          📊 تصدير Excel / CSV
+        </button>
+        <button onclick="shareMonthlySummary()" class="px-4 py-2.5 rounded-xl bg-green-600 hover:bg-green-700 text-white text-xs font-bold">
+          💬 مشاركة ملخص الشهر
+        </button>
+      </div>
+    </section>
+
+    <section class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+      <div class="card p-4 border-r-4 border-emerald-600">
+        <div class="text-xs text-slate-500 font-semibold">إجمالي صافي الربح</div>
+        <div id="m-kpi-profit" class="text-2xl font-extrabold text-emerald-600 mt-1">0.00 MRU</div>
+      </div>
+      <div class="card p-4 border-r-4 border-blue-600">
+        <div class="text-xs text-slate-500 font-semibold">إجمالي العمولات</div>
+        <div id="m-kpi-comm" class="text-2xl font-extrabold text-blue-600 mt-1">0.00 MRU</div>
+      </div>
+      <div class="card p-4 border-r-4 border-rose-500">
+        <div class="text-xs text-slate-500 font-semibold">إجمالي المصاريف</div>
+        <div id="m-kpi-exp" class="text-2xl font-extrabold text-rose-600 mt-1">0.00 MRU</div>
+      </div>
+      <div class="card p-4 border-r-4 border-purple-600">
+        <div class="text-xs text-slate-500 font-semibold">أيام العمل / المعاملات</div>
+        <div id="m-kpi-days" class="text-xl font-extrabold text-purple-700 mt-1">0 يوم | 0 عملية</div>
+      </div>
+    </section>
+
+    <section class="card p-5 overflow-x-auto">
+      <h2 class="text-lg font-bold mb-4 text-slate-800">📋 سجل الأيام المحفوظة</h2>
+      <table class="w-full text-right text-xs border-collapse">
+        <thead>
+          <tr class="bg-slate-100 text-slate-700 border-b border-slate-200">
+            <th class="p-3">التاريخ</th>
+            <th class="p-3">المعاملات</th>
+            <th class="p-3">العمولات</th>
+            <th class="p-3">المصاريف</th>
+            <th class="p-3">صافي الربح</th>
+            <th class="p-3">الموجود الفعلي</th>
+            <th class="p-3">الديون (لك/عليك)</th>
+            <th class="p-3">إجراء</th>
+          </tr>
+        </thead>
+        <tbody id="history-tbody" class="divide-y divide-slate-100">
+        </tbody>
+      </table>
+      <div id="empty-history-msg" class="text-center py-8 text-slate-400 text-sm hidden">
+        لا توجد أيام محفوظة في هذه الفترة بعد. احفظ يومك من تبويب "إدخال وحساب اليوم" ليظهر هنا تلقائياً.
+      </div>
+    </section>
+  </div>
+
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js').catch(() => {});
+      });
+    }
+
+    let deferredPrompt = null;
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      deferredPrompt = e;
+    });
+
+    async function triggerInstallApp() {
+      if (deferredPrompt) {
+        deferredPrompt.prompt();
+        const { outcome } = await deferredPrompt.userChoice;
+        if (outcome === 'accepted') deferredPrompt = null;
+      } else {
+        document.getElementById('install-modal').classList.remove('hidden');
+        document.getElementById('install-modal').classList.add('flex');
+      }
+    }
+
+    function closeInstallModal() {
+      document.getElementById('install-modal').classList.add('hidden');
+      document.getElementById('install-modal').classList.remove('flex');
+    }
+
+    function switchTab(tab) {
+      const isDaily = tab === 'daily';
+      document.getElementById('view-daily').classList.toggle('hidden', !isDaily);
+      document.getElementById('view-history').classList.toggle('hidden', isDaily);
+      document.getElementById('tab-btn-daily').className = isDaily
+        ? 'flex-1 py-2.5 rounded-xl text-sm font-bold tab-active transition'
+        : 'flex-1 py-2.5 rounded-xl text-sm font-bold text-slate-600 hover:bg-slate-100 transition';
+      document.getElementById('tab-btn-history').className = !isDaily
+        ? 'flex-1 py-2.5 rounded-xl text-sm font-bold tab-active transition'
+        : 'flex-1 py-2.5 rounded-xl text-sm font-bold text-slate-600 hover:bg-slate-100 transition';
+      if (!isDaily) renderHistory();
+    }
+
+    if (window.pdfjsLib) {
+      pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    }
+
+    let uploadedImageBase64 = null;
+    let uploadedImageMime = null;
+
+    document.addEventListener('DOMContentLoaded', () => {
+      const today = new Date().toISOString().split('T')[0];
+      document.getElementById('tx-date').value = today;
+      document.getElementById('filter-month').value = today.slice(0, 7);
+      const savedKey = localStorage.getItem('gemini_api_key');
+      if (savedKey) document.getElementById('gemini-key').value = savedKey;
+      loadSavedState();
+      recalc();
+    });
+
+    const dropZone = document.getElementById('drop-zone');
+    dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('dragover'); });
+    dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+    dropZone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      dropZone.classList.remove('dragover');
+      if (e.dataTransfer.files.length) processFile(e.dataTransfer.files[0]);
+    });
+
+    function handleFileSelect(e) {
+      if (e.target.files.length) processFile(e.target.files[0]);
+    }
+
+    async function processFile(file) {
+      const statusEl = document.getElementById('file-status');
+      statusEl.classList.remove('hidden');
+      statusEl.textContent = `⏳ جاري قراءة الملف: ${file.name}...`;
+      uploadedImageBase64 = null;
+
+      try {
+        if (file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')) {
+          const arrayBuffer = await file.arrayBuffer();
+          const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+          let fullText = '';
+          for (let i = 1; i <= pdf.numPages; i++) {
+            const page = await pdf.getPage(i);
+            const content = await page.getTextContent();
+            fullText += content.items.map(item => item.str).join(' ') + '\n';
+          }
+          document.getElementById('ai-input').value = fullText;
+          statusEl.textContent = `✅ تم استخراج نص PDF (${pdf.numPages} صفحات) - جاري التحليل...`;
+          analyzeData();
+        } else if (file.type.startsWith('image/')) {
+          const reader = new FileReader();
+          reader.onload = () => {
+            uploadedImageBase64 = reader.result.split(',')[1];
+            uploadedImageMime = file.type;
+            statusEl.textContent = `✅ تم إرفاق الصورة: ${file.name} - اضغط تحليل`;
+          };
+          reader.readAsDataURL(file);
+        } else {
+          const text = await file.text();
+          document.getElementById('ai-input').value = text;
+          statusEl.textContent = `✅ تم تحميل الملف: ${file.name}`;
+          analyzeData();
+        }
+      } catch (err) {
+        statusEl.textContent = `❌ تعذر قراءة الملف: ${err.message}`;
+      }
+    }
+
+    function parseLocalStatement(text) {
+      const trMatches = text.match(/TR\d+/g) || [];
+      const uniqueTr = [...new Set(trMatches)];
+      const rechargeMatches = text.match(/RECHARGE/gi) || [];
+      const factureMatches = text.match(/PAIEMENT\s*FAC/gi) || [];
+      const retraitMatches = text.match(/RETRAIT/gi) || [];
+
+      if (uniqueTr.length > 0 || rechargeMatches.length > 0) {
+        const count = uniqueTr.length || (rechargeMatches.length + factureMatches.length + retraitMatches.length);
+        const estComm = (rechargeMatches.length * 20.10) + (factureMatches.length * 2.01);
+        return {
+          isStatement: true,
+          count,
+          recharges: rechargeMatches.length,
+          factures: factureMatches.length,
+          retraits: retraitMatches.length,
+          commissions: Number(estComm.toFixed(2))
+        };
+      }
+
+      const getNum = (regex) => {
+        const m = text.match(regex);
+        return m ? parseFloat(m[1].replace(',', '.')) : null;
+      };
+      return {
+        isStatement: false,
+        commissions: getNum(/(?:ربح|ربحت|عمول[ةه]|عمولات)\s*[:\-]?\s*(\d+(?:[.,]\d+)?)/),
+        expenses: getNum(/(?:صرف|صرفت|مصاريف)\s*[:\-]?\s*(\d+(?:[.,]\d+)?)/),
+        newDebts: getNum(/(?:سلف|سلفت|دين|ديون)\s*[:\-]?\s*(\d+(?:[.,]\d+)?)/),
+        cash: getNum(/(?:كاش|نقد)\s*[:\-]?\s*(\d+(?:[.,]\d+)?)/)
+      };
+    }
+
+    async function analyzeData() {
+      const text = document.getElementById('ai-input').value.trim();
+      const apiKey = document.getElementById('gemini-key').value.trim();
+      const outEl = document.getElementById('ai-output');
+      const btn = document.getElementById('analyze-btn');
+
+      if (!text && !uploadedImageBase64) {
+        alert('يرجى رفع ملف معاملات أو كتابة تفاصيل اليوم أولاً.');
+        return;
+      }
+
+      btn.disabled = true;
+      btn.textContent = '⏳ جاري التحليل الدقيق...';
+      outEl.classList.remove('hidden');
+
+      if (apiKey) {
+        try {
+          const prompt = `أنت محاسب مالي دقيق بالعملة الموريتانية MRU. حلل النص أو الصورة التالية واستخرج بدقة:
+1. عدد المعاملات المؤكدة (txCount)
+2. مجموع العمولات/الأرباح (commissions)
+3. المصاريف (expenses)
+4. الديون الجديدة للعملاء (newDebts)
+5. أي تنبيه حول خانات معكوسة (مثل RETRAIT).
+أرجع JSON فقط بهذا الشكل: {"txCount":0,"commissions":0,"expenses":0,"newDebts":0,"note":""}`;
+
+          const parts = [{ text: prompt + "\n\n" + text }];
+          if (uploadedImageBase64) {
+            parts.push({ inline_data: { mime_type: uploadedImageMime, data: uploadedImageBase64 } });
+          }
+
+          const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ contents: [{ parts }] })
+          });
+          const data = await res.json();
+          const raw = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+          const jsonMatch = raw.match(/\{[\s\S]*\}/);
+          if (jsonMatch) {
+            const parsed = JSON.parse(jsonMatch[0]);
+            if (parsed.txCount) document.getElementById('tx-count').value = parsed.txCount;
+            if (parsed.commissions) document.getElementById('daily-commissions').value = parsed.commissions;
+            if (parsed.expenses) document.getElementById('daily-expenses').value = parsed.expenses;
+            if (parsed.newDebts) document.getElementById('new-debts-for').value = parsed.newDebts;
+            recalc();
+            outEl.textContent = `✅ تم التحليل عبر Gemini AI بنجاح:\n• المعاملات: ${parsed.txCount}\n• العمولات: ${parsed.commissions} MRU\n${parsed.note ? '⚠️ تنبيه: ' + parsed.note : ''}`;
+            btn.disabled = false;
+            btn.textContent = '✨ تحليل وتعبئة الأرقام تلقائياً';
+            return;
+          }
+        } catch (e) {
+          console.warn('Fallback to local parser:', e);
+        }
+      }
+
+      const local = parseLocalStatement(text);
+      if (local.isStatement) {
+        document.getElementById('tx-count').value = local.count;
+        document.getElementById('daily-commissions').value = local.commissions;
+        outEl.textContent = `✅ تم تحليل كشف المعاملات بدقة:\n• إجمالي المعاملات المكتشفة: ${local.count}\n• شحن (RECHARGE): ${local.recharges} | فواتير: ${local.factures} | سحب (RETRAIT): ${local.retraits}\n• إجمالي العمولات المحسوبة: ${local.commissions.toFixed(2)} MRU${local.retraits > 0 ? '\n⚠️ تنبيه: توجد عملية سحب (RETRAIT)، تأكد من مراجعة قيمتها يدوياً.' : ''}`;
+      } else {
+        if (local.commissions !== null) document.getElementById('daily-commissions').value = local.commissions;
+        if (local.expenses !== null) document.getElementById('daily-expenses').value = local.expenses;
+        if (local.newDebts !== null) document.getElementById('new-debts-for').value = local.newDebts;
+        if (local.cash !== null) document.getElementById('actual-cash').value = local.cash;
+        outEl.textContent = '✅ تم استخراج الأرقام من النص وتحديث الحقول تلقائياً.';
+      }
+      recalc();
+      btn.disabled = false;
+      btn.textContent = '✨ تحليل وتعبئة الأرقام تلقائياً';
+    }
+
+    function val(id) {
+      return parseFloat(document.getElementById(id).value) || 0;
+    }
+
+    function recalc() {
+      const opening = val('opening-capital');
+      const commissions = val('daily-commissions');
+      const cash = val('actual-cash');
+      const digital = val('digital-balance');
+      const newDebts = val('new-debts-for');
+      const collectedDebts = val('collected-debts');
+      const expenses = val('daily-expenses');
+
+      const netProfit = commissions - expenses;
+      const totalAvailable = cash + digital;
+      const expectedAvailable = opening + commissions + collectedDebts - expenses - newDebts;
+      const diff = totalAvailable - expectedAvailable;
+
+      document.getElementById('kpi-profit').textContent = `${netProfit.toFixed(2)} MRU`;
+      document.getElementById('kpi-total-available').textContent = `${totalAvailable.toFixed(2)} MRU`;
+      document.getElementById('kpi-debts-for').textContent = `${newDebts.toFixed(2)} MRU`;
+
+      const diffEl = document.getElementById('kpi-diff');
+      diffEl.textContent = `${diff >= 0 ? '+' : ''}${diff.toFixed(2)} MRU`;
+      diffEl.className = `text-2xl font-extrabold mt-1 ${Math.abs(diff) < 0.01 ? 'text-emerald-600' : (diff > 0 ? 'text-blue-600' : 'text-rose-600')}`;
+
+      const banner = document.getElementById('reconcile-banner');
+      banner.textContent = `الموجود المتوقع: ${expectedAvailable.toFixed(2)} MRU | الموجود الفعلي: ${totalAvailable.toFixed(2)} MRU | الحالة: ${Math.abs(diff) < 0.01 ? 'مطابق 100% ✅' : (diff > 0 ? 'زيادة +' + diff.toFixed(2) : 'نقص ' + diff.toFixed(2))}`;
+
+      saveState();
+      updateSharePreview();
+    }
+
+    function getHistory() {
+      try {
+        return JSON.parse(localStorage.getItem('smart_accountant_history_v1') || '[]');
+      } catch (e) { return []; }
+    }
+
+    function saveToHistory() {
+      const date = document.getElementById('tx-date').value;
+      if (!date) { alert('يرجى تحديد التاريخ أولاً.'); return; }
+
+      const record = {
+        date,
+        txCount: val('tx-count'),
+        opening: val('opening-capital'),
+        commissions: val('daily-commissions'),
+        expenses: val('daily-expenses'),
+        netProfit: Number((val('daily-commissions') - val('daily-expenses')).toFixed(2)),
+        cash: val('actual-cash'),
+        digital: val('digital-balance'),
+        totalAvailable: Number((val('actual-cash') + val('digital-balance')).toFixed(2)),
+        newDebts: val('new-debts-for'),
+        collectedDebts: val('collected-debts'),
+        debtsOnMe: val('debts-on-me')
+      };
+
+      let history = getHistory();
+      const idx = history.findIndex(r => r.date === date);
+      if (idx >= 0) {
+        if (!confirm(`يوجد سجل محفوظ مسبقاً لتاريخ (${date}). هل تريد تحديثه بالأرقام الجديدة؟`)) return;
+        history[idx] = record;
+      } else {
+        history.push(record);
+      }
+      history.sort((a, b) => b.date.localeCompare(a.date));
+      localStorage.setItem('smart_accountant_history_v1', JSON.stringify(history));
+      alert(`✅ تم حفظ حسابات يوم (${date}) في السجل الشهري بنجاح!`);
+      renderHistory();
+    }
+
+    function deleteHistoryRecord(date) {
+      if (!confirm(`هل تريد حذف سجل يوم (${date})؟`)) return;
+      const history = getHistory().filter(r => r.date !== date);
+      localStorage.setItem('smart_accountant_history_v1', JSON.stringify(history));
+      renderHistory();
+    }
+
+    function loadDayIntoEditor(date) {
+      const rec = getHistory().find(r => r.date === date);
+      if (!rec) return;
+      document.getElementById('tx-date').value = rec.date;
+      document.getElementById('tx-count').value = rec.txCount;
+      document.getElementById('opening-capital').value = rec.opening;
+      document.getElementById('daily-commissions').value = rec.commissions;
+      document.getElementById('daily-expenses').value = rec.expenses;
+      document.getElementById('actual-cash').value = rec.cash;
+      document.getElementById('digital-balance').value = rec.digital;
+      document.getElementById('new-debts-for').value = rec.newDebts;
+      document.getElementById('collected-debts').value = rec.collectedDebts;
+      document.getElementById('debts-on-me').value = rec.debtsOnMe;
+      recalc();
+      switchTab('daily');
+    }
+
+    function getFilteredHistory() {
+      const monthFilter = document.getElementById('filter-month').value;
+      const all = getHistory();
+      return monthFilter ? all.filter(r => r.date.startsWith(monthFilter)) : all;
+    }
+
+    function renderHistory() {
+      const records = getFilteredHistory();
+      const tbody = document.getElementById('history-tbody');
+      const emptyMsg = document.getElementById('empty-history-msg');
+      tbody.innerHTML = '';
+
+      let sumProfit = 0, sumComm = 0, sumExp = 0, sumTx = 0;
+      records.forEach(r => {
+        sumProfit += r.netProfit;
+        sumComm += r.commissions;
+        sumExp += r.expenses;
+        sumTx += r.txCount;
+
+        const tr = document.createElement('tr');
+        tr.className = 'hover:bg-slate-50';
+        tr.innerHTML = `
+          <td class="p-3 font-bold text-slate-800">${r.date}</td>
+          <td class="p-3">${r.txCount}</td>
+          <td class="p-3 text-blue-600 font-semibold">${r.commissions.toFixed(2)}</td>
+          <td class="p-3 text-rose-600">${r.expenses.toFixed(2)}</td>
+          <td class="p-3 font-extrabold text-emerald-600">${r.netProfit.toFixed(2)} MRU</td>
+          <td class="p-3 font-bold">${r.totalAvailable.toFixed(2)} MRU</td>
+          <td class="p-3 text-amber-700">${r.newDebts.toFixed(0)} / ${r.debtsOnMe.toFixed(0)}</td>
+          <td class="p-3 flex gap-1">
+            <button onclick="loadDayIntoEditor('${r.date}')" class="px-2 py-1 rounded bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold">تعديل</button>
+            <button onclick="deleteHistoryRecord('${r.date}')" class="px-2 py-1 rounded bg-rose-100 hover:bg-rose-200 text-rose-700 font-bold">حذف</button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+
+      emptyMsg.classList.toggle('hidden', records.length > 0);
+      document.getElementById('m-kpi-profit').textContent = `${sumProfit.toFixed(2)} MRU`;
+      document.getElementById('m-kpi-comm').textContent = `${sumComm.toFixed(2)} MRU`;
+      document.getElementById('m-kpi-exp').textContent = `${sumExp.toFixed(2)} MRU`;
+      document.getElementById('m-kpi-days').textContent = `${records.length} يوم | ${sumTx} عملية`;
+    }
+
+    function exportCSV() {
+      const records = getFilteredHistory();
+      if (!records.length) { alert('لا توجد بيانات لتصديرها.'); return; }
+      const headers = ['التاريخ','عدد المعاملات','رأس مال البداية','العمولات','المصاريف','صافي الربح','الكاش الفعلي','الرصيد الإلكتروني','الموجود الكلي','ديون لك','ديون محصلة','ديون عليك'];
+      const rows = records.map(r => [r.date, r.txCount, r.opening, r.commissions, r.expenses, r.netProfit, r.cash, r.digital, r.totalAvailable, r.newDebts, r.collectedDebts, r.debtsOnMe].join(','));
+      const csv = '\uFEFF' + [headers.join(','), ...rows].join('\n');
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `سجل_الأرباح_${document.getElementById('filter-month').value || 'الكامل'}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    function shareMonthlySummary() {
+      const records = getFilteredHistory();
+      if (!records.length) { alert('لا توجد أيام محفوظة لمشاركتها.'); return; }
+      const friend = document.getElementById('friend-name').value.trim() || 'صديقي';
+      const period = document.getElementById('filter-month').value || 'السجل الكامل';
+      const sumProfit = records.reduce((s, r) => s + r.netProfit, 0);
+      const sumComm = records.reduce((s, r) => s + r.commissions, 0);
+      const sumExp = records.reduce((s, r) => s + r.expenses, 0);
+      const sumTx = records.reduce((s, r) => s + r.txCount, 0);
+      const latestAvailable = records[0].totalAvailable;
+
+      const msg = `السلام عليكم ${friend}، ملخص الأرباح لفترة (${period}):\n• أيام العمل المسجلة: ${records.length} يوم (${sumTx} معاملة)\n• إجمالي العمولات: ${sumComm.toFixed(2)} MRU\n• إجمالي المصاريف: ${sumExp.toFixed(2)} MRU\n• صافي الربح للفترة: ${sumProfit.toFixed(2)} MRU\n• آخر موجود مسجل: ${latestAvailable.toFixed(2)} MRU`;
+      window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
+    }
+
+    function updateSharePreview() {
+      const friend = document.getElementById('friend-name').value.trim() || 'صديقي';
+      const date = document.getElementById('tx-date').value;
+      const txCount = val('tx-count');
+      const netProfit = val('daily-commissions') - val('daily-expenses');
+      const totalAvailable = val('actual-cash') + val('digital-balance');
+      const newDebts = val('new-debts-for');
+      const debtsOnMe = val('debts-on-me');
+
+      let lines = [`السلام عليكم ${friend}، ملخص حسابات يوم (${date}):`];
+      if (document.getElementById('chk-profit').checked) {
+        lines.push(`• صافي الربح اليومي: ${netProfit.toFixed(2)} MRU`);
+      }
+      if (document.getElementById('chk-total').checked) {
+        lines.push(`• المبلغ الكامل (الموجود الفعلي): ${totalAvailable.toFixed(2)} MRU`);
+      }
+      if (document.getElementById('chk-debts').checked) {
+        lines.push(`• الديون لنا عند الزبائن: ${newDebts.toFixed(2)} MRU | الديون علينا: ${debtsOnMe.toFixed(2)} MRU`);
+      }
+      if (document.getElementById('chk-tx').checked) {
+        lines.push(`• عدد المعاملات: ${txCount} معاملة`);
+      }
+      document.getElementById('share-preview').value = lines.join('\n');
+    }
+
+    function shareWhatsApp() {
+      const msg = encodeURIComponent(document.getElementById('share-preview').value);
+      window.open(`https://wa.me/?text=${msg}`, '_blank');
+    }
+
+    function copyReport() {
+      const txt = document.getElementById('share-preview').value;
+      navigator.clipboard.writeText(txt);
+      alert('تم نسخ التقرير بنجاح!');
+    }
+
+    function nativeShare() {
+      const txt = document.getElementById('share-preview').value;
+      if (navigator.share) {
+        navigator.share({ title: 'ملخص الحسابات اليومية', text: txt });
+      } else {
+        copyReport();
+      }
+    }
+
+    function saveState() {
+      const ids = ['tx-date','tx-count','opening-capital','daily-commissions','actual-cash','digital-balance','new-debts-for','collected-debts','debts-on-me','daily-expenses','friend-name'];
+      const data = {};
+      ids.forEach(id => data[id] = document.getElementById(id).value);
+      localStorage.setItem('smart_accountant_mru_v1', JSON.stringify(data));
+    }
+
+    function loadSavedState() {
+      const raw = localStorage.getItem('smart_accountant_mru_v1');
+      if (!raw) return;
+      try {
+        const data = JSON.parse(raw);
+        Object.keys(data).forEach(k => {
+          const el = document.getElementById(k);
+          if (el) el.value = data[k];
+        });
+      } catch (e) {}
+    }
+
+    function resetDay() {
+      if (!confirm('هل تريد تصفير أرقام اليوم لبدء يوم جديد؟')) return;
+      const totalCurrent = val('actual-cash') + val('digital-balance');
+      document.getElementById('opening-capital').value = totalCurrent.toFixed(2);
+      ['tx-count','daily-commissions','new-debts-for','collected-debts','debts-on-me','daily-expenses'].forEach(id => {
+        document.getElementById(id).value = 0;
+      });
+      document.getElementById('tx-date').value = new Date().toISOString().split('T')[0];
+      recalc();
+    }
+  </script>
+</body>
+</html>
+
